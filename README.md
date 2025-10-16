@@ -2,9 +2,7 @@
   <img src="./images/LINK-LOGO.png" width="260" alt="link Logo" style="border-radius: 12px;">
 </p>
 
-<h1 align="center">MT-Video-Bench: A Holistic Video Understanding Benchmark 
-
-for Evaluating Multimodal LLMs in Multi-Turn Dialogues</h1>
+<h1 align="center">MT-Video-Bench: A Holistic Video Understanding Benchmark for Evaluating Multimodal LLMs in Multi-Turn Dialogues</h1>
 <p align="center">
   <a href="https://mt-video-bench.github.io/">
     <img src="https://img.shields.io/badge/%F0%9F%8C%90%20Homepage-MT--Video--Bench-blue.svg" alt="Homepage">
@@ -89,7 +87,7 @@ Our dataset is under the CC-BY-NC-SA-4.0 license.
 
 We do not own the copyright of any raw video files. Currently, we provide video access to researchers under the condition of acknowledging the above license. For the video data used, we respect and acknowledge any copyrights of the video authors. 
 
-If the original authors of the related works still believe that the videos should be removed, please contact caoruili507@gmail.com or directly raise an issue.
+If the original authors of the related works still believe that the videos should be removed, please contact ynpan24@m.fudan.edu.cn or directly raise an issue.
 
 
 
