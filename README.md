@@ -1,4 +1,3 @@
-# MT-Video-Bench
 <p align="center">
   <img src="./images/LINK-LOGO.png" width="260" alt="link Logo" style="border-radius: 12px;">
 </p>
@@ -140,6 +139,7 @@ We evaluate both **closed- and open-source MLLMs** on MT-Video-Bench. Closed-sou
  </em>
 </p>
 
+</details>
 
 ## 🪶 Citation
 
