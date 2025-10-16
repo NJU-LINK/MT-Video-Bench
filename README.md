@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./images/LINK-LOGO.png" width="260" alt="link Logo" style="border-radius: 12px;">
+  <img src="./static/LINK-LOGO.png" width="260" alt="link Logo" style="border-radius: 12px;">
 </p>
 
 <h1 align="center">MT-Video-Bench: A Holistic Video Understanding Benchmark for Evaluating Multimodal LLMs in Multi-Turn Dialogues</h1>
@@ -24,7 +24,7 @@ However, existing evaluation benchmarks remain limited to single-turn question a
 🎬 **MT-Video-Bench** fills this gap.  
 It emphasizes cross-scene reasoning, long-range dependencies, and interactive adaptability, thereby aligning closely with real-world application demands.
 <p align="center">
-  <img src="./images/intro.png" width="88%" alt="Illustration of MT-Video-Bench">
+  <img src="./static/intro.png" width="88%" alt="Illustration of MT-Video-Bench">
   <br>
   <em>Figure 1. Illustration of multi-turn dialogues under single-scene and cross-scene settings. The evaluated questions corresponding to tasks are marked with underlining, and the scenes involved in the entire multi-turn dialogues are marked with blue dotted boxes.</em>
 </p>
@@ -48,7 +48,7 @@ It emphasizes cross-scene reasoning, long-range dependencies, and interactive ad
 - 🧠 Very challenging, even 🥇 best-performing model achieving only ⚠️ 68.45 % overall accuracy, revealing the considerable difficulty of this dataset.
 
 <p align="center">
-  <img src="./images/benchmark_statistics.png" width="88%" alt="Statistics of multi-turn dialogues">
+  <img src="./static/benchmark_statistics.png" width="88%" alt="Statistics of multi-turn dialogues">
   <br>
   <em>Figure 2. It covers a broad range of topics across five main categories: Movie, TV, Sports, Knowledge, and Life Record, each with multiple sub-topics, ensuring a diverse and balanced data distribution.</em>
 </p>
@@ -56,7 +56,7 @@ It emphasizes cross-scene reasoning, long-range dependencies, and interactive ad
 
 MT-Video-Bench is a new multi-turn video understanding benchmark that lets you easily compare our dataset with existing video-language benchmarks.
 <p align="center">
-  <img src="./images/benchmark_comparison.png" width="88%" alt="Comparison with other benchmarks">
+  <img src="./static/benchmark_comparison.png" width="88%" alt="Comparison with other benchmarks">
   <br>
   <em>Figure 3. Comparison with other benchmarks. Avg. Q/V - the average number of QA pairs per video. \textbf{Long}: whether the average video length is greater than 10 minutes. Cross-Scene - whether the dialogue covers more than 4 scenes.</em>
 </p>
@@ -73,7 +73,7 @@ A glance at how MT-Video-Bench was built👇
 
 
 <p align="center">
-  <img src="./images/pipeline_page-0001.jpg" width="85%" alt="Data Pipeline">
+  <img src="./static/pipeline_page-0001.jpg" width="85%" alt="Data Pipeline">
   <br>
   <em>Figure 4. Data construction and refinement pipeline of MT-Video-Bench.</em>
 </p>
@@ -96,48 +96,67 @@ If the original authors of the related works still believe that the videos shoul
 We evaluate both **closed- and open-source MLLMs** on MT-Video-Bench. Closed-source models include Gemini 2.5 Pro, Gemini 2.5 Flash, and Doubao-Seed-1.6-vision, while open-source models cover **18 representative MLLMs** from Qwen2.5 VL, InternVL3.5, LLaVA, InterVideo, VideoChat, VideoLlama3, and MiniCPM series.
 
 <p align="center">
-  <img src="./images/main result.png" width="90%" alt="Main Results">
+  <img src="./static/main result.png" width="90%" alt="Main Results">
   <br>
   <em>Figure 5. Evaluation results on MT-Video-Bench. "OR" - Object Reference. "MR" - Memory Recall. "CS" - Content Summary. "AR" - Answer Refusal. "TS" - Topic Shifting. "PI" - Proactive Interaction. </em>
 </p>
 
 <details> <summary>📦 More results can been seen here.</summary>
 <p align="center">
-  <img src="./images/single_cross_compare.png" width="80%" alt="Comparison on single-scene vs cross-scene">
+  <img src="./static/single_cross_compare.png" width="80%" alt="Comparison on single-scene vs cross-scene">
   <br>
   <em>Figure 6. Performance comparison of Qwen2.5-VL-7B, InternVL3.5-8B (Think), and Gemini 2.5 Pro across various tasks under single-scene and cross-scene settings.
  </em>
 </p>
 
 <p align="center">
-  <img src="./images/video_length_ablation.png" width="80%" alt="Comparison on video length">
+  <img src="./static/video_length_ablation.png" width="80%" alt="Comparison on video length">
   <br>
   <em>Figure 7. Performance comparison of four MLLMs across diverse video lengths.
  </em>
 </p>
 
 <p align="center">
-  <img src="./images/wo_context_gt_qwen_bar_color.png" width="80%" alt="Comparison on context">
+  <img src="./static/wo_context_gt_qwen_bar_color.png" width="80%" alt="Comparison on context">
   <br>
   <em>Figure 8. Performance comparison of golden context, self-predicted context, and without context for the Qwen2.5-VL-7B model.
  </em>
 </p>
 
 <p align="center">
-  <img src="./images/ablation_frames.png" width="80%" alt="Comparison on ablation">
+  <img src="./static/ablation_frames.png" width="80%" alt="Comparison on ablation">
   <br>
   <em>Figure 9. Ablation results of frames on different abilities. (a) Performance of Object Reference, Memory Recall, Content Summary, and Proactive Interaction; (b) Performance of Answer Refusal and Topic Shifting.
  </em>
 </p>
 
 <p align="center">
-  <img src="./images/draw_resulotion.png" width="80%" alt="Comparison on resolution">
+  <img src="./static/draw_resulotion.png" width="80%" alt="Comparison on resolution">
   <br>
   <em>Figure 10. Ablation results of resolutions on different abilities.
  </em>
 </p>
 
 </details>
+
+## 🛠️ Evaluation
+
+### STEP 1
+
+We take the InternVL3.5 model as an example and provide the inference script. You can run:
+
+```bash
+python infer_internvl.py --model_type internvl4b
+```
+
+### STEP 2
+
+To evaluate the inference results, use the following command:
+
+```bash
+python eval.py --model_type internvl4b
+```
+
 
 ## 🪶 Citation
 
