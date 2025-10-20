@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./static/logo.jpg" width="260" alt="link Logo" style="border-radius: 12px;">
+  <img src="./static/logo.jpg" width="200" alt="link Logo" style="border-radius: 12px;">
 </p>
 
 <h1 align="center">MT-Video-Bench: A Holistic Video Understanding Benchmark for Evaluating Multimodal LLMs in Multi-Turn Dialogues</h1>
