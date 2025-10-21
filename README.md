@@ -7,7 +7,7 @@
   <a href="https://mt-video-bench.github.io/">
     <img src="https://img.shields.io/badge/%F0%9F%8C%90%20Homepage-MT--Video--Bench-blue.svg" alt="Homepage">
   </a>
-  <a href="https://arxiv.org/abs/2510.10689">
+  <a href="https://arxiv.org/abs/2510.17722">
     <img src="https://img.shields.io/badge/Paper-ArXiv-red.svg" alt="Arxiv Paper">
   </a >
   <a href="https://huggingface.co/datasets/NJU-LINK/MT-Video-Bench">
