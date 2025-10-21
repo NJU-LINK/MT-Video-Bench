@@ -161,5 +161,15 @@ python eval.py --model_type internvl4b
 ## 🪶 Citation
 
 If you find **MT-Video-Bench** useful for your research, please cite:
-
+```bibtex
+@misc{pan2025mtvideobenchholisticvideounderstanding,
+      title={MT-Video-Bench: A Holistic Video Understanding Benchmark for Evaluating Multimodal LLMs in Multi-Turn Dialogues}, 
+      author={Yaning Pan and Zekun Wang and Qianqian Xie and Yongqian Wen and Yuanxing Zhang and Guohui Zhang and Haoxuan Hu and Zhiyu Pan and Yibing Huang and Zhidong Gan and Yonghong Lin and An Ping and Tianhao Peng and Jiaheng Liu},
+      year={2025},
+      eprint={2510.17722},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2510.17722}, 
+}
+```
 
