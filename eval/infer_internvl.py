@@ -16,10 +16,10 @@ import argparse
 from decord import VideoReader, cpu
 
 ABILITY_LIST=[
-    'Summary', 'Object Reference', 'Memory Recall', 'Answer Refusal', 'Instruction Clarification'
+    'Summary', 'Object Reference', 'Memory Recall', 'Answer Refusal'
 ]
 ABILITY_0=[
-    'summary', 'object_reference', 'memory_recall', 'answer_refusal', 'instruction_clarification'
+    'summary', 'object_reference', 'memory_recall', 'answer_refusal'
 ]
 ABILITY_1 = [
     'proactive_interaction', 'topic_shifting'
