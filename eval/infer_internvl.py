@@ -1,30 +1,26 @@
-from transformers import AutoModel, AutoTokenizer
-import torch
-import torchvision.transforms as T
-from PIL import Image
-from torchvision.transforms.functional import InterpolationMode
-import numpy as np
 import os
 import json
-import logging
-from io import BytesIO
-from openai import OpenAI
-from tqdm import tqdm
-import cv2
-import time
 import argparse
+import logging
+from tqdm import tqdm
+from datetime import datetime
+import numpy as np
+import cv2
 from decord import VideoReader, cpu
+import torch
+from PIL import Image
+import torchvision.transforms as T
+from torchvision.transforms.functional import InterpolationMode
 
-ABILITY_LIST=[
+ABILITY_LIST = [
     'Summary', 'Object Reference', 'Memory Recall', 'Answer Refusal'
 ]
-ABILITY_0=[
+ABILITY_0 = [
     'summary', 'object_reference', 'memory_recall', 'answer_refusal'
 ]
 ABILITY_1 = [
     'proactive_interaction', 'topic_shifting'
 ]
-
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -32,7 +28,12 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 
 def build_transform(input_size):
     MEAN, STD = IMAGENET_MEAN, IMAGENET_STD
-    transform = T.Compose([T.Lambda(lambda img: img.convert("RGB") if img.mode != "RGB" else img), T.Resize((input_size, input_size), interpolation=InterpolationMode.BICUBIC), T.ToTensor(), T.Normalize(mean=MEAN, std=STD)])
+    transform = T.Compose([
+        T.Lambda(lambda img: img.convert("RGB") if img.mode != "RGB" else img), 
+        T.Resize((input_size, input_size), interpolation=InterpolationMode.BICUBIC), 
+        T.ToTensor(), 
+        T.Normalize(mean=MEAN, std=STD)
+    ])
     return transform
 
 
@@ -138,157 +139,187 @@ def load_video(video_path, bound=None, input_size=448, max_num=1, num_segments=3
     pixel_values = torch.cat(pixel_values_list)
     return pixel_values, num_patches_list
 
+class VideoInference:
+    def __init__(self, config):
+        self.frames = config['frames']
+        self.max_pixels = config['max_pixels']
+        self.device = config.get('device', 'cuda')
+        self.model_path = config['model_path']
+        self.ability_json_dir = config['input_dir']
+        self.output_dir = config['output_dir']
+        self.video_dir = config['video_dir']
+        self.think = config.get('think', False)
+        self.abilities = config.get('abilities', ABILITY_0 + ABILITY_1)
+        self.model_name = self.model_path.split('/')[-1]
+        self.processed_video_map = dict()
+        self._setup_logging()
+        self._load_transformers_model()
+        os.makedirs(self.output_dir, exist_ok=True)
 
-def generate_model_answers_internvl(input_dir, output_dir, video_folder_dir=None, ability_name=None, args=None):
-    assert ability_name in (ABILITY_0 + ABILITY_1)
-    flag = 0 if ability_name in ABILITY_0 else 1
+    def _setup_logging(self):
+        os.makedirs('logs', exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = os.path.join('logs', f'encoder_{timestamp}.log')
+        logging.basicConfig(
+            filename=log_file,
+            filemode='w',
+            level=logging.INFO,
+            format="%(asctime)s - [%(levelname)s] - %(message)s"
+        )
+        self.logger = logging.getLogger("EncoderLogger")
 
-    if os.path.exists(output_dir) and os.path.getsize(output_dir) > 0:
-        with open(output_dir, "r", encoding='utf-8') as g_existing:
-            model_answers = json.load(g_existing)
-    else:
-        model_answers = {}
+    def _load_transformers_model(self):
+        self.logger.info(f"load transformers model: {self.model_path}")
+        from transformers import AutoModel, AutoTokenizer
+        import torch
+        self.model = AutoModel.from_pretrained(
+            self.model_path,
+            torch_dtype=torch.bfloat16,
+            load_in_8bit=False,
+            low_cpu_mem_usage=True,
+            use_flash_attn=True,
+            trust_remote_code=True,
+            device_map="auto"
+        ).eval()
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True, use_fast=False)
+        if self.think:
+            self.model_name = self.model_name + "_think"
+            self.generation_config = dict(max_new_tokens=8192, do_sample=True, temperature=0.6, top_p=0.001, repetition_penalty=1.05)
+        else:
+            self.model_name = self.model_name + "_nothink"
+            self.generation_config = dict(max_new_tokens=1024, do_sample=True, temperature=0.1, top_p=0.001, repetition_penalty=1.05)
 
-    with open(input_dir, "r", encoding='utf-8') as f:
-        reference_qa = json.load(f)
-        for video_name, multi_events_qa in reference_qa.items():
-            if video_name in model_answers and len(multi_events_qa) == len(model_answers[video_name]):
+        if self.think:
+            R1_SYSTEM_PROMPT = """
+            You are an AI assistant that rigorously follows this response protocol:
+
+            1. First, conduct a detailed analysis of the question. Consider different angles, potential solutions, and reason through the problem step-by-step. Enclose this entire thinking process within <think> and </think> tags.
+
+            2. After the thinking section, provide a clear, concise, and direct answer to the user's question. Separate the answer from the think section with a newline.
+
+            Ensure that the thinking process is thorough but concise, remaining focused on the query.  The final answer should be standalone and not reference the thinking section.
+            """.strip()
+
+            self.model.system_message = R1_SYSTEM_PROMPT
+
+    def _get_sorted_files(self):
+        files = [f for f in os.listdir(self.ability_json_dir) if f.endswith('.json')]
+        files.sort()
+        return files
+
+    def run(self):
+        input_files = self._get_sorted_files()
+        for json_file in input_files:
+            ability_name = os.path.splitext(json_file)[0]
+            if ability_name not in self.abilities:
+                self.logger.info(f"skip: {ability_name}")
                 continue
-            if video_name not in model_answers:
-                model_answers[video_name] = {}
+            input_path = os.path.join(self.ability_json_dir, json_file)
+            output_path = os.path.join(self.output_dir, self.model_name, json_file)
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            self.process_file(input_path, output_path, ability_name)
 
-            video_file_path = os.path.join(video_folder_dir, f"{video_name}.mp4")
-            
-            for index, single_event_qa in enumerate(multi_events_qa):
-                event_index = single_event_qa["event_index"]
-                if f"event_{event_index}" in model_answers[video_name]:
+    def process_file(self, input_path, output_path, ability_name):
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            with open(output_path, "r", encoding='utf-8') as g:
+                model_answers = json.load(g)
+        else:
+            model_answers = {}
+        
+        # -------- Start to inference --------
+        with open(input_path, "r", encoding='utf-8') as f:
+            eval_datasets = json.load(f)
+            for video_name, mtqa_list in eval_datasets.items():
+                if video_name not in model_answers:
+                    model_answers[video_name] = {}
+                if video_name in model_answers and len(model_answers[video_name]) == len(mtqa_list):
+                    self.logger.info(f"skip: {video_name}")
                     continue
-                
-                model_single_event_qa = []
-                all_history = []
-                ability_indexs = []
-                for i in range(len(single_event_qa)):
-                    if (f"Round {i + 1}") not in single_event_qa:
-                        continue
-                    if flag == 1:
-                        ability_indexs.append(i + 1)
-                    else:
-                        if single_event_qa[f"Round {i + 1}"]["Ability"] in ABILITY_LIST:
-                            ability_indexs.append(i + 1)
-                    for name, words in single_event_qa[f"Round {i + 1}"].items():
-                        if name[0] == "Q" or 'User' in name:
-                            sentence = f"User: {words}"
-                            all_history.append(sentence)
-                        elif name != "Ability" and (name[0] == "A" or "Bot" in name):
-                            sentence = f"Assistant: {words}"
-                            all_history.append(sentence)
 
-                for i in range(len(single_event_qa)):
-                    if (f"Round {i + 1}") not in single_event_qa:
+                video_path = os.path.join(self.video_dir, f"{video_name}.mp4")
+                for mtqa_dict in mtqa_list:
+                    event_index = mtqa_dict["event_index"]
+                    mtqa = mtqa_dict["mtqa"]
+                    if event_index in model_answers[video_name]:
+                        self.logger.info(f"skip: {video_name} - {event_index}")
                         continue
 
-                    if i + 1 in ability_indexs:
-                        history = all_history[: i * 2]
-                        question = all_history[i * 2]
-                        HISTORY = []
-                        for his_idx in range(0, len(history), 2):
-                            HISTORY.append((history[his_idx], history[his_idx + 1]))
+                    dialogue_history = []
+                    for round_idx, round_data in mtqa.items():
+                        question, answer = round_data["User"], round_data["Assistant"]
 
-                        # prepare prompt
-                        if args.think:
-                            R1_SYSTEM_PROMPT = """
-                            You are an AI assistant that rigorously follows this response protocol:
+                        if event_index not in model_answers[video_name]:
+                            model_answers[video_name][event_index] = []
 
-                            1. First, conduct a detailed analysis of the question. Consider different angles, potential solutions, and reason through the problem step-by-step. Enclose this entire thinking process within <think> and </think> tags.
-
-                            2. After the thinking section, provide a clear, concise, and direct answer to the user's question. Separate the answer from the think section with a newline.
-
-                            Ensure that the thinking process is thorough but concise, remaining focused on the query.  The final answer should be standalone and not reference the thinking section.
-                            """.strip()
-
-                            args.model.system_message = R1_SYSTEM_PROMPT
+                        if (ability_name in ABILITY_1) or (round_data["Ability"] in ABILITY_LIST):
+                            PROMPT = (
+                                f"You're an AI assistant helping to answer questions about a video. Use the conversation history if helpful.\n"
+                                f"Current question:\n"
+                                f"{question}"
+                            )
+                            HISTORY = []
+                            for his_idx in range(0, len(dialogue_history), 2):
+                                HISTORY.append((dialogue_history[his_idx], dialogue_history[his_idx + 1]))
+                            
+                            pixel_values, num_patches_list = load_video(video_path, input_size=self.max_pixels, num_segments=self.frames, max_num=1, get_frame_by_duration=False)
+                            pixel_values = pixel_values.to(torch.bfloat16).to(self.model.device)
+                            video_prefix = "".join([f"Frame{i+1}: <image>\n" for i in range(len(num_patches_list))])
+                            question = video_prefix + PROMPT
+                            try:
+                                with torch.no_grad():
+                                    response = self.model.chat(
+                                        self.tokenizer, 
+                                        pixel_values, 
+                                        question, 
+                                        self.generation_config, 
+                                        num_patches_list=num_patches_list, 
+                                        history=HISTORY, 
+                                        # return_history=True
+                                    )
+                                    # extract result
+                                    if self.think:
+                                        if '</think>' in response:
+                                            response = response.split('</think>', 1)[-1].strip()
+                                        else:
+                                            response = response.strip()
+                            except Exception as e:
+                                self.logger.error(f"failed: {e}")
+                                response = "[ERROR] " + str(e)
+                        else:
+                            response = "No need for this ability to answer."
                         
-                        PROMPT = f"""
-                        You are an AI assistant designed to answer questions about the video.\n
-                        Now, answer the following question, taking into account the conversation history:\n
-                        {question}
-                        """
-                        print(f"  **PROMPT** : {PROMPT}")
-
-                        pixel_values, num_patches_list = load_video(video_file_path, input_size=args.max_pixels, num_segments=args.frames, max_num=1, get_frame_by_duration=False)
-                        pixel_values = pixel_values.to(torch.bfloat16).to(args.model.device)
-                        video_prefix = "".join([f"Frame{i+1}: <image>\n" for i in range(len(num_patches_list))])
-
-                        QUESTION = video_prefix + PROMPT
-                        response, chat_history = args.model.chat(args.tokenizer, pixel_values, QUESTION, args.generation_config, num_patches_list=num_patches_list, history=HISTORY, return_history=True)
-                        if args.think:
-                            if '</think>' in response:
-                                response = response.split('</think>', 1)[-1].strip()
-                            else:
-                                response = response.strip()
+                        model_answers[video_name][event_index].append(response)
                         
-                        model_answer = response
-                        print(f"model_answer: {model_answer}")
-                    else:
-                        model_answer = "No need for this ability to answer."
-
-                    model_single_event_qa.append(model_answer)
-
-                model_answers[video_name][f"event_{event_index}"] = model_single_event_qa
-                with open(output_dir, "w", encoding='utf-8') as g:
-                    json.dump(model_answers, g, ensure_ascii=False, indent=4)
+                        with open(output_path, "w", encoding='utf-8') as g:
+                            json.dump(model_answers, g, ensure_ascii=False, indent=4)
+                        
+                        dialogue_history.append(f"User: {question}")
+                        dialogue_history.append(f"Assistant: {answer}")
 
 
-def generate_pipeline(input_dir, output_dir, video_folder_dir=None, args=None):
-    for ability_name_json_path in sorted(os.listdir(input_dir)):
-        ability_name = ability_name_json_path.split('.')[0]
-        # if args.ability != ability_name:
-        #     continue
-        print(f"======Processing {ability_name_json_path}======")
-        ability_name_full_path = os.path.join(input_dir, ability_name_json_path)
-        result_full_path = os.path.join(output_dir, ability_name_json_path)
-        generate_model_answers_internvl(ability_name_full_path, result_full_path, video_folder_dir, ability_name, args)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Evaluate model outputs")
-    parser.add_argument('--model_type', type=str, default='internvl4b', help='Type of the model to evaluate')
-    parser.add_argument('--frames', type=int, default=32)
-    parser.add_argument('--max_pixels', type=int, default=448)
+def parse_args():
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument('--model_path', type=str, default='InternVL3_5-8B')
+    parser.add_argument('--frames', type=int, default=128)
+    parser.add_argument('--max_pixels', type=int, default=720)
+    parser.add_argument('--video_dir', type=str, default='videos')
+    parser.add_argument('--input_dir', type=str, default='mtqa')
+    parser.add_argument('--output_dir', type=str, default='./output/model_answers')
+    parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--think', type=bool, default=False)
-    parser.add_argument('--ability', type=str, default="", help='topic_shifting, proactive_interaction, summary, object_reference, memory_recall, answer_refusal')
-    args = parser.parse_args()
-    
-    model_path_list = {
-        "internvl4b": "InternVL3_5-4B",
-        "internvl8b": "InternVL3_5-8B",
-        "internvl38b": "InternVL3_5-38B"
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
+    config = {
+        'frames': args.frames,
+        'max_pixels': args.max_pixels,
+        'video_dir': args.video_dir,
+        'input_dir': args.input_dir,
+        'output_dir': args.output_dir,
+        'device': args.device,
+        'model_path': args.model_path,
+        'think': args.think
     }
-    model_path = model_path_list[args.model_type]
-    args.model = AutoModel.from_pretrained(
-        model_path,
-        torch_dtype=torch.bfloat16,
-        load_in_8bit=False,
-        low_cpu_mem_usage=True,
-        use_flash_attn=True,
-        trust_remote_code=True,
-        device_map="auto").eval()
-    args.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
-
-    if args.think:
-        args.model_type = args.model_type + "_thinking"
-        args.generation_config = dict(max_new_tokens=8192, do_sample=True, temperature=0.6, top_p=0.001, repetition_penalty=1.05)
-    else:
-        args.model_type = args.model_type + "_nothinking"
-        args.generation_config = dict(max_new_tokens=1024, do_sample=True, temperature=0.1, top_p=0.001, repetition_penalty=1.05)
-
-    
-    video_folder_dir=f"MT-Video-Bench/videos"
-    input_dir=f"MT-Video-Bench/data"
-    output_dir=f"./inference_answers/answers_{model_type}"
-    os.makedirs(output_dir, exist_ok=True)
-    
-    start_time = time.time()
-    generate_pipeline(input_dir, output_dir, video_folder_dir, args)
-    end_time = time.time()
-    print("需要的时间:", end_time - start_time)
+    processor = VideoInference(config)
+    processor.run()

@@ -35,7 +35,7 @@ It emphasizes cross-scene reasoning, long-range dependencies, and interactive ad
 
 - 📌 **135 videos** from 5 major categories & 23 subcategories 
 
-- 💬 **987 dialogues** (each with 5–8 turns) and **5,805 QA pairs** for evaluating six core abilities
+- 💬 **1,000 dialogues** (each with 5–8 turns) and **5,887 QA pairs** for evaluating six core abilities
   - Object Reference
   - Memory Recall
   - Content Summary
@@ -45,7 +45,7 @@ It emphasizes cross-scene reasoning, long-range dependencies, and interactive ad
 
 - 🧮 **Long-Video Evaluation:** durations up to 20 minutes 
   
-- 🧠 Very challenging, even 🥇 best-performing model achieving only ⚠️ 68.45 % overall accuracy, revealing the considerable difficulty of this dataset.
+- 🧠 Very challenging, even 🥇 high-performance model achieving only ⚠️ 76.95 % overall accuracy, revealing the considerable difficulty of this dataset.
 
 <p align="center">
   <img src="./static/benchmark_statistics.png" width="88%" alt="Statistics of multi-turn dialogues">
@@ -58,7 +58,7 @@ MT-Video-Bench is a new multi-turn video understanding benchmark that lets you e
 <p align="center">
   <img src="./static/benchmark_comparison.png" width="88%" alt="Comparison with other benchmarks">
   <br>
-  <em>Figure 3. Comparison with other benchmarks. Avg. Q/V - the average number of QA pairs per video. \textbf{Long}: whether the average video length is greater than 10 minutes. Cross-Scene - whether the dialogue covers more than 4 scenes.</em>
+  <em>Figure 3. Comparison with other benchmarks. Avg. Q/V - the average number of QA pairs per video. \textbf{Long}: whether the average video length is greater than 10 minutes. Q. Div. and A. Div.: the lexical diversity of questions and answers. Q. Len. and A. Len.: the average number of tokens of questions and answers, computed with the LLaMA-3.1-8B tokenizer.</em>
 </p>
 
 
@@ -73,7 +73,7 @@ A glance at how MT-Video-Bench was built👇
 
 
 <p align="center">
-  <img src="./static/pipeline_page-0001.jpg" width="85%" alt="Data Pipeline">
+  <img src="./static/pipeline.png" width="85%" alt="Data Pipeline">
   <br>
   <em>Figure 4. Data construction and refinement pipeline of MT-Video-Bench.</em>
 </p>
@@ -93,7 +93,7 @@ If the original authors of the related works still believe that the videos shoul
 
 ## 📊 Evaluation Results
 
-We evaluate both **closed- and open-source MLLMs** on MT-Video-Bench. Closed-source models include Gemini 2.5 Pro, Gemini 2.5 Flash, and Doubao-Seed-1.6-vision, while open-source models cover **18 representative MLLMs** from Qwen2.5 VL, InternVL3.5, LLaVA, InterVideo, VideoChat, VideoLlama3, and MiniCPM series.
+We evaluate both **closed- and open-source MLLMs** on MT-Video-Bench. Closed-source models include Gemini 2.5 Pro, Gemini 2.5 Flash, and Doubao-Seed-1.6-vision, while open-source models cover **21 representative MLLMs** from Qwen3 VL, Qwen2.5 VL, InternVL3.5, LLaVA, InterVideo, VideoChat, VideoLlama3, and MiniCPM series.
 
 <p align="center">
   <img src="./static/main result.png" width="90%" alt="Main Results">
@@ -103,9 +103,9 @@ We evaluate both **closed- and open-source MLLMs** on MT-Video-Bench. Closed-sou
 
 <details> <summary>📦 More results can been seen here.</summary>
 <p align="center">
-  <img src="./static/single_cross_compare.png" width="80%" alt="Comparison on single-scene vs cross-scene">
+  <img src="./static/single_cross_compare.png" width="100%" alt="Comparison on single-scene vs cross-scene">
   <br>
-  <em>Figure 6. Performance comparison of Qwen2.5-VL-7B, InternVL3.5-8B (Think), and Gemini 2.5 Pro across various tasks under single-scene and cross-scene settings.
+  <em>Figure 6. The distribution of scene counts involved in each multi-turn dialogue, the effect of scene counts on overall performance and each task performance.
  </em>
 </p>
 
@@ -119,21 +119,21 @@ We evaluate both **closed- and open-source MLLMs** on MT-Video-Bench. Closed-sou
 <p align="center">
   <img src="./static/wo_context_gt_qwen_bar_color.png" width="80%" alt="Comparison on context">
   <br>
-  <em>Figure 8. Performance comparison of golden context, self-predicted context, and without context for the Qwen2.5-VL-7B model.
+  <em>Figure 8. Performance comparison of golden context, self-predicted context, and without context for the Qwen3-VL-8B-Instruct model.
  </em>
 </p>
 
 <p align="center">
-  <img src="./static/ablation_frames.png" width="80%" alt="Comparison on ablation">
+  <img src="./static/ablation_frames.png" width="100%" alt="Comparison on ablation">
   <br>
-  <em>Figure 9. Ablation results of frames on different abilities. (a) Performance of Object Reference, Memory Recall, Content Summary, and Proactive Interaction; (b) Performance of Answer Refusal and Topic Shifting.
+  <em>Figure 9. Effect of Frame and Resolution Settings.
  </em>
 </p>
 
 <p align="center">
-  <img src="./static/draw_resulotion.png" width="80%" alt="Comparison on resolution">
+  <img src="./static/round_num.png" width="80%" alt="Comparison on resolution">
   <br>
-  <em>Figure 10. Ablation results of resolutions on different abilities.
+  <em>Figure 10. Effect of Dialogure Turns.
  </em>
 </p>
 
@@ -146,7 +146,7 @@ We evaluate both **closed- and open-source MLLMs** on MT-Video-Bench. Closed-sou
 We take the InternVL3.5 model as an example and provide the inference script. You can run:
 
 ```bash
-python infer_internvl.py --model_type internvl4b
+python infer_internvl.py --model_path /path/to/model
 ```
 
 ### STEP 2
@@ -154,7 +154,7 @@ python infer_internvl.py --model_type internvl4b
 To evaluate the inference results, use the following command:
 
 ```bash
-python eval.py --model_type internvl4b
+python eval.py
 ```
 
 
